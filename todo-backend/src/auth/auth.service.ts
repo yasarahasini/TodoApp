@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -19,11 +19,21 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
+    // Find user by email
     const user = await this.userRepo.findOne({ where: { email } });
-    if (!user) return null;
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) return null;
 
+    if (!user) {
+      // User not found → block login
+      throw new UnauthorizedException("User not registered");
+    }
+
+    // Check password
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      throw new UnauthorizedException("Invalid password");
+    }
+
+    // Sign JWT
     const token = this.jwtService.sign({ id: user.id, email: user.email });
     return { token };
   }
